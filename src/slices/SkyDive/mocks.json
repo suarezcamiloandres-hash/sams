@@ -1,0 +1,19 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"sentence": {
+				"__TYPE__": "FieldContent",
+				"value": "From Huila to the world",
+				"type": "Text"
+			},
+			"flavor": {
+				"__TYPE__": "FieldContent",
+				"value": "huila",
+				"type": "Select"
+			}
+		},
+		"items": []
+	}
+]
