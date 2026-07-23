@@ -5,7 +5,6 @@ import { Center, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 useGLTF.preload("/grano_color.glb");
-useGLTF.preload("/color_granos.glb");
 
 // The 3D product is a coffee bean. `flavor` is kept so the carousel, hero,
 // and CMS content keep working unchanged (it drives names, prices, and
@@ -168,21 +167,6 @@ export function SodaCan({ flavor = "huila", scale = 2, ...props }: SodaCanProps)
     <group {...props} dispose={null} scale={scale}>
       <Center>
         <primitive object={bean} />
-      </Center>
-    </group>
-  );
-}
-
-/** Pile of coffee beans — used as the story-section centerpiece. */
-export function BeansPile({ scale = 2, ...props }: { scale?: number }) {
-  // The cluster spans ~9 bean-lengths, so it needs a much larger target
-  // size than the single bean for the individual beans to read on screen.
-  const pile = useNormalizedBeans("/color_granos.glb", 1.5);
-
-  return (
-    <group {...props} dispose={null} scale={scale}>
-      <Center>
-        <primitive object={pile} />
       </Center>
     </group>
   );
