@@ -7,7 +7,7 @@ import {
   SliceComponentProps,
 } from "@prismicio/react";
 import { Center, Environment, View } from "@react-three/drei";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { Group } from "three";
 import gsap from "gsap";
@@ -38,30 +38,63 @@ export type CarouselProps = SliceComponentProps<Content.CarouselSlice>;
 /**
  * Component for "Carousel" Slices.
  */
+/** Live product data pulled from Shopify (or local fallback). */
+type ProductCard = {
+  flavor: string;
+  title: string;
+  price: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  available: boolean;
+};
+
 const Carousel = ({ slice }: CarouselProps): JSX.Element => {
   const [currentFlavorIndex, setCurrentFlavorIndex] = useState(0);
+  const [products, setProducts] = useState<ProductCard[] | null>(null);
   const sodaCanRef = useRef<Group>(null);
 
-  function changeFlavor(index: number) {
-    if (!sodaCanRef.current) return;
+  // Pull live image + price from Shopify. Falls back to the static FLAVORS
+  // data (and the 3D bean) until product photos are uploaded to Shopify.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/products")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data)) setProducts(data as ProductCard[]);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
+  const current = products?.[currentFlavorIndex];
+  const displayName = current?.title ?? FLAVORS[currentFlavorIndex].name;
+  const displayPrice = current?.price ?? FLAVORS[currentFlavorIndex].price;
+  const displayImage = current?.imageUrl ?? null;
+
+  function changeFlavor(index: number) {
     const nextIndex = (index + FLAVORS.length) % FLAVORS.length;
 
     const tl = gsap.timeline();
 
+    // Spin the 3D bean only when it's the one on screen (no photo yet).
+    if (sodaCanRef.current) {
+      tl.to(
+        sodaCanRef.current.rotation,
+        {
+          y:
+            index > currentFlavorIndex
+              ? `-=${Math.PI * 2 * SPINS_ON_CHANGE}`
+              : `+=${Math.PI * 2 * SPINS_ON_CHANGE}`,
+          ease: "power2.inOut",
+          duration: 1,
+        },
+        0,
+      );
+    }
+
     tl.to(
-      sodaCanRef.current.rotation,
-      {
-        y:
-          index > currentFlavorIndex
-            ? `-=${Math.PI * 2 * SPINS_ON_CHANGE}`
-            : `+=${Math.PI * 2 * SPINS_ON_CHANGE}`,
-        ease: "power2.inOut",
-        duration: 1,
-      },
-      0,
-    )
-      .to(
         ".background, .wavy-circles-outer, .wavy-circles-inner",
         {
           backgroundColor: FLAVORS[nextIndex].color,
@@ -97,24 +130,36 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
           direction="left"
           label="Previous Flavor"
         />
-        {/* Can */}
-        <View className="aspect-square h-[70vmin] min-h-40">
-          <Center position={[0, 0, 1.5]}>
-            <FloatingCan
-              ref={sodaCanRef}
-              floatIntensity={0.3}
-              rotationIntensity={1}
-              flavor={FLAVORS[currentFlavorIndex].flavor}
+        {/* Product photo (from Shopify) with the 3D bean as fallback */}
+        <div className="relative aspect-square h-[70vmin] min-h-40">
+          {displayImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={displayImage}
+              src={displayImage}
+              alt={current?.imageAlt ?? displayName}
+              className="h-full w-full object-contain drop-shadow-2xl"
             />
-          </Center>
+          ) : (
+            <View className="h-full w-full">
+              <Center position={[0, 0, 1.5]}>
+                <FloatingCan
+                  ref={sodaCanRef}
+                  floatIntensity={0.3}
+                  rotationIntensity={1}
+                  flavor={FLAVORS[currentFlavorIndex].flavor}
+                />
+              </Center>
 
-          <Environment
-            files="/hdr/lobby.hdr"
-            environmentIntensity={0.6}
-            environmentRotation={[0, 3, 0]}
-          />
-          <directionalLight intensity={6} position={[0, 1, 1]} />
-        </View>
+              <Environment
+                files="/hdr/lobby.hdr"
+                environmentIntensity={0.6}
+                environmentRotation={[0, 3, 0]}
+              />
+              <directionalLight intensity={6} position={[0, 1, 1]} />
+            </View>
+          )}
+        </div>
         {/* Right */}
         <ArrowButton
           onClick={() => changeFlavor(currentFlavorIndex - 1)}
@@ -126,10 +171,8 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
       <div className="text-area relative mx-auto text-center">
         <div className="text-wrapper text-4xl font-medium">
           <p>
-            {FLAVORS[currentFlavorIndex].name}{" "}
-            <span className="font-bold text-gold">
-              {FLAVORS[currentFlavorIndex].price}
-            </span>
+            {displayName}{" "}
+            <span className="font-bold text-gold">{displayPrice}</span>
           </p>
         </div>
         <div className="mt-2 text-2xl font-normal opacity-90">
@@ -139,7 +182,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
           href={`/api/checkout?flavor=${FLAVORS[currentFlavorIndex].flavor}`}
           className="mt-6 inline-block rounded-sm bg-gold px-8 py-4 text-xl font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep"
         >
-          Buy now — {FLAVORS[currentFlavorIndex].price}
+          Buy now — {displayPrice}
         </a>
       </div>
     </section>

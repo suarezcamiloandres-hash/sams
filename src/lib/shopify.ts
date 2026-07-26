@@ -116,6 +116,94 @@ const CART_CREATE_MUTATION = /* GraphQL */ `
   }
 `;
 
+/** A product as shown in the carousel: live image + price from Shopify. */
+export type LiveProduct = {
+  /** Flavor key (huila / geisha / caturra / reserve). */
+  flavor: string;
+  title: string;
+  /** Formatted price, e.g. "$19.00". */
+  price: string;
+  /** Featured image URL from Shopify, or null if none uploaded yet. */
+  imageUrl: string | null;
+  imageAlt: string;
+  available: boolean;
+};
+
+function formatMoney(amount: string, currencyCode: string): string {
+  const value = Number(amount);
+  const symbol = currencyCode === "AUD" || currencyCode === "USD" ? "$" : "";
+  const formatted = Number.isFinite(value) ? value.toFixed(2) : amount;
+  return symbol ? `${symbol}${formatted}` : `${formatted} ${currencyCode}`;
+}
+
+type ShopifyProductNode = {
+  title: string;
+  availableForSale: boolean;
+  featuredImage: { url: string; altText: string | null } | null;
+  priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+} | null;
+
+/**
+ * Fetches title, featured image, price, and availability for all four
+ * products in a single Storefront request (one aliased field per handle).
+ * Returns the local `PRODUCTS` data as a fallback when Shopify is not
+ * configured or a product/image is missing, so the carousel never breaks.
+ */
+export async function getProducts(): Promise<LiveProduct[]> {
+  const entries = Object.entries(PRODUCTS);
+
+  const fallback: LiveProduct[] = entries.map(([flavor, p]) => ({
+    flavor,
+    title: p.title,
+    price: formatMoney(p.price, p.currencyCode),
+    imageUrl: null,
+    imageAlt: p.title,
+    available: true,
+  }));
+
+  if (!isShopifyConfigured) {
+    return fallback;
+  }
+
+  const query = /* GraphQL */ `
+    query CarouselProducts {
+      ${entries
+        .map(
+          ([flavor, p]) => `
+        ${flavor}: product(handle: "${p.handle}") {
+          title
+          availableForSale
+          featuredImage { url altText }
+          priceRange { minVariantPrice { amount currencyCode } }
+        }`,
+        )
+        .join("\n")}
+    }
+  `;
+
+  try {
+    const data = await shopifyFetch<Record<string, ShopifyProductNode>>(query);
+    return entries.map(([flavor, p], i) => {
+      const node = data[flavor];
+      if (!node) return fallback[i];
+      return {
+        flavor,
+        title: node.title || p.title,
+        price: formatMoney(
+          node.priceRange.minVariantPrice.amount,
+          node.priceRange.minVariantPrice.currencyCode,
+        ),
+        imageUrl: node.featuredImage?.url ?? null,
+        imageAlt: node.featuredImage?.altText || node.title || p.title,
+        available: node.availableForSale,
+      };
+    });
+  } catch (error) {
+    console.error("getProducts failed, using fallback:", error);
+    return fallback;
+  }
+}
+
 /**
  * Creates a Shopify cart with one product and returns its checkout URL.
  */

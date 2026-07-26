@@ -43,7 +43,7 @@ export const fallbackSlices = [
     version: "initial",
     items: [],
     primary: {
-      sentence: "From Huila to the world",
+      sentence: "From Colombia to the world",
       flavor: "huila",
     },
   },
