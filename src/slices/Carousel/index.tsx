@@ -1,11 +1,7 @@
 "use client";
 
 import { Content } from "@prismicio/client";
-import {
-  PrismicRichText,
-  PrismicText,
-  SliceComponentProps,
-} from "@prismicio/react";
+import { PrismicText, SliceComponentProps } from "@prismicio/react";
 import { Center, Environment, View } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
@@ -26,6 +22,7 @@ const PALETTE = ["#6B4423", "#8A4455", "#4E5A33", "#5C2E24", "#3A2A17"];
 type ProductCard = {
   id: string;
   title: string;
+  description: string;
   price: string;
   imageUrl: string | null;
   imageAlt: string;
@@ -35,11 +32,12 @@ type ProductCard = {
 };
 
 /** Shown until /api/products responds (also the shape when Shopify is off). */
+const FALLBACK_DESC = "Specialty Colombian coffee, roasted to order in Brisbane.";
 const FALLBACK: ProductCard[] = [
-  { id: "huila", title: "Huila Origin Coffee", price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
-  { id: "geisha", title: "Geisha Coffee", price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
-  { id: "caturra", title: "Caturra Premium", price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
-  { id: "reserve", title: "Special Reserve", price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
+  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
 ];
 
 /**
@@ -183,9 +181,9 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
             <span className="font-bold text-gold">{displayPrice}</span>
           </p>
         </div>
-        <div className="mt-2 text-2xl font-normal opacity-90">
-          <PrismicRichText field={slice.primary.price_copy} />
-        </div>
+        <p className="mx-auto mt-2 max-w-xl text-pretty text-lg font-normal opacity-90">
+          {current.description}
+        </p>
         <a
           href={checkoutHref}
           className="mt-6 inline-block rounded-sm bg-gold px-8 py-4 text-xl font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep"

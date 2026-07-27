@@ -26,6 +26,8 @@ export type LiveProduct = {
   /** Product handle (stable id). */
   id: string;
   title: string;
+  /** Plain-text product description from Shopify. */
+  description: string;
   /** Formatted price, e.g. "$19.00". */
   price: string;
   /** Featured image URL from Shopify, or null if none uploaded yet. */
@@ -39,11 +41,12 @@ export type LiveProduct = {
 };
 
 /** Static products used only when Shopify is unreachable/unconfigured. */
+const FALLBACK_DESC = "Specialty Colombian coffee, roasted to order in Brisbane.";
 const FALLBACK_PRODUCTS: LiveProduct[] = [
-  { id: "huila", title: "Huila Origin Coffee", price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
-  { id: "geisha", title: "Geisha Coffee", price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
-  { id: "caturra", title: "Caturra Premium", price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
-  { id: "reserve", title: "Special Reserve", price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
+  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
 ];
 
 function formatMoney(amount: string, currencyCode: string): string {
@@ -91,6 +94,7 @@ const PRODUCTS_QUERY = /* GraphQL */ `
       nodes {
         handle
         title
+        description
         availableForSale
         featuredImage { url altText }
         priceRange { minVariantPrice { amount currencyCode } }
@@ -105,6 +109,7 @@ type ProductsResponse = {
     nodes: {
       handle: string;
       title: string;
+      description: string;
       availableForSale: boolean;
       featuredImage: { url: string; altText: string | null } | null;
       priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
@@ -129,6 +134,7 @@ export async function getProducts(): Promise<LiveProduct[]> {
     return nodes.map((node, i) => ({
       id: node.handle,
       title: node.title,
+      description: node.description || FALLBACK_DESC,
       price: formatMoney(
         node.priceRange.minVariantPrice.amount,
         node.priceRange.minVariantPrice.currencyCode,
