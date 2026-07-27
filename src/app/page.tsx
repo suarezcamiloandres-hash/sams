@@ -6,6 +6,7 @@ import * as prismic from "@prismicio/client";
 import { createClient } from "@/prismicio";
 import { components } from "@/slices";
 import { fallbackSlices } from "@/lib/fallbackSlices";
+import Certifications from "@/components/Certifications";
 
 // This component renders your homepage.
 //
@@ -50,5 +51,10 @@ export default async function Index() {
     // Prismic repo not available yet — fallback content keeps the site alive.
   }
 
-  return <SliceZone slices={slices} components={components} />;
+  return (
+    <>
+      <SliceZone slices={slices} components={components} />
+      <Certifications />
+    </>
+  );
 }
