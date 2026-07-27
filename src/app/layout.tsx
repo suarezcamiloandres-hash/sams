@@ -7,6 +7,7 @@ import "./app.css";
 import Header from "@/components/Header";
 import ViewCanvas from "@/components/ViewCanvas";
 import Footer from "@/components/Footer";
+import VideoButton from "@/components/VideoButton";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({
           <ViewCanvas />
         </main>
         <Footer />
+        <VideoButton />
       </body>
       <PrismicPreview repositoryName={repositoryName} />
     </html>
