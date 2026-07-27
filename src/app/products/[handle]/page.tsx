@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getProduct } from "@/lib/shopify";
+import BuyControls from "@/components/BuyControls";
+import ShareButtons from "@/components/ShareButtons";
 
 // Rendered on demand (queries Shopify at request time, not build time).
 export const dynamic = "force-dynamic";
@@ -23,10 +25,6 @@ export async function generateMetadata({
 export default async function ProductPage({ params }: { params: Params }) {
   const product = await getProduct(params.handle);
   if (!product) notFound();
-
-  const checkoutHref = product.variantId
-    ? `/api/checkout?variant=${encodeURIComponent(product.variantId)}`
-    : "/api/checkout";
 
   return (
     <section className="min-h-screen bg-crema px-6 pb-24 pt-32 text-espresso">
@@ -87,19 +85,13 @@ export default async function ProductPage({ params }: { params: Params }) {
               />
             )}
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <a
-                href={checkoutHref}
-                className="inline-block rounded-sm bg-gold px-8 py-4 text-lg font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-xl"
-              >
-                Buy now — {product.price}
-              </a>
-              {!product.available && (
-                <span className="text-sm font-semibold uppercase tracking-wide text-espresso/50">
-                  Currently out of stock
-                </span>
-              )}
-            </div>
+            <BuyControls
+              variantId={product.variantId}
+              price={product.price}
+              available={product.available}
+            />
+
+            <ShareButtons title={product.title} />
           </div>
         </div>
       </div>
