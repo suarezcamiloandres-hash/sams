@@ -151,6 +151,92 @@ export async function getProducts(): Promise<LiveProduct[]> {
   }
 }
 
+/** Full data for a single product detail page. */
+export type ProductDetail = {
+  handle: string;
+  title: string;
+  descriptionHtml: string;
+  price: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  images: { url: string; alt: string }[];
+  available: boolean;
+  variantId: string | null;
+};
+
+const PRODUCT_QUERY = /* GraphQL */ `
+  query Product($handle: String!) {
+    product(handle: $handle) {
+      handle
+      title
+      descriptionHtml
+      availableForSale
+      featuredImage { url altText }
+      images(first: 6) { nodes { url altText } }
+      priceRange { minVariantPrice { amount currencyCode } }
+      variants(first: 1) { nodes { id } }
+    }
+  }
+`;
+
+/**
+ * Fetches one product by handle for its detail page. Falls back to the
+ * static product with the same id when Shopify is unconfigured; returns
+ * null (→ 404) when the product doesn't exist.
+ */
+export async function getProduct(handle: string): Promise<ProductDetail | null> {
+  if (!isShopifyConfigured) {
+    const fb = FALLBACK_PRODUCTS.find((p) => p.id === handle);
+    if (!fb) return null;
+    return {
+      handle: fb.id,
+      title: fb.title,
+      descriptionHtml: `<p>${fb.description}</p>`,
+      price: fb.price,
+      imageUrl: fb.imageUrl,
+      imageAlt: fb.imageAlt,
+      images: [],
+      available: fb.available,
+      variantId: fb.variantId,
+    };
+  }
+
+  try {
+    const data = await shopifyFetch<{
+      product: {
+        handle: string;
+        title: string;
+        descriptionHtml: string;
+        availableForSale: boolean;
+        featuredImage: { url: string; altText: string | null } | null;
+        images: { nodes: { url: string; altText: string | null }[] };
+        priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+        variants: { nodes: { id: string }[] };
+      } | null;
+    }>(PRODUCT_QUERY, { handle });
+
+    const p = data.product;
+    if (!p) return null;
+    return {
+      handle: p.handle,
+      title: p.title,
+      descriptionHtml: p.descriptionHtml || "",
+      price: formatMoney(
+        p.priceRange.minVariantPrice.amount,
+        p.priceRange.minVariantPrice.currencyCode,
+      ),
+      imageUrl: p.featuredImage?.url ?? null,
+      imageAlt: p.featuredImage?.altText || p.title,
+      images: p.images.nodes.map((n) => ({ url: n.url, alt: n.altText || p.title })),
+      available: p.availableForSale,
+      variantId: p.variants.nodes[0]?.id ?? null,
+    };
+  } catch (error) {
+    console.error("getProduct failed:", error);
+    return null;
+  }
+}
+
 /**
  * Diagnostics for /api/products?debug=1 — never exposes the token, only
  * whether things are wired up. Safe to remove once launched.

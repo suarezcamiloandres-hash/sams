@@ -186,12 +186,20 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
         <p className="mx-auto mt-2 line-clamp-2 max-w-xl text-pretty text-sm font-normal opacity-90 md:text-base">
           {current.description}
         </p>
-        <a
-          href={checkoutHref}
-          className="mt-4 inline-block rounded-sm bg-gold px-8 py-3 text-lg font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-xl"
-        >
-          Buy now — {displayPrice}
-        </a>
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <a
+            href={checkoutHref}
+            className="inline-block rounded-sm bg-gold px-8 py-3 text-lg font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-xl"
+          >
+            Buy now — {displayPrice}
+          </a>
+          <a
+            href={`/products/${current.id}`}
+            className="text-sm font-medium uppercase tracking-wide text-white/80 underline underline-offset-4 transition-colors hover:text-white"
+          >
+            View details
+          </a>
+        </div>
       </div>
     </section>
   );
