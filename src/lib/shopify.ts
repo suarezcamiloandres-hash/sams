@@ -1,10 +1,10 @@
 /**
  * Shopify Storefront API client.
  *
- * When NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN and
- * NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN are not set, the site falls
- * back to static product data so the experience keeps working before the
- * Shopify store exists.
+ * The carousel loads whatever products exist in the store — no hardcoded
+ * handles — so adding or removing products in Shopify updates the site
+ * automatically. When the store isn't configured (no env vars), a small
+ * static fallback keeps the site rendering with the 3D bean.
  */
 
 const SHOPIFY_API_VERSION = "2025-01";
@@ -15,49 +15,43 @@ const storefrontToken =
 
 export const isShopifyConfigured = Boolean(domain && storefrontToken);
 
-export type CoffeeProduct = {
-  handle: string;
+/** Where "Buy now" goes when Shopify isn't configured yet. */
+const FALLBACK_STORE_URL = "https://samscoffee.com.au/#products";
+
+const BEAN_FLAVORS = ["huila", "geisha", "caturra", "reserve"] as const;
+export type BeanFlavor = (typeof BEAN_FLAVORS)[number];
+
+/** A product as shown in the carousel. */
+export type LiveProduct = {
+  /** Product handle (stable id). */
+  id: string;
   title: string;
+  /** Formatted price, e.g. "$19.00". */
   price: string;
-  currencyCode: string;
-  /** Where "Buy now" goes when Shopify is not configured yet. */
-  fallbackUrl: string;
+  /** Featured image URL from Shopify, or null if none uploaded yet. */
+  imageUrl: string | null;
+  imageAlt: string;
+  available: boolean;
+  /** First variant's GID, used to build the checkout. Null in fallback. */
+  variantId: string | null;
+  /** 3D bean shown when there is no product photo (dev / fallback). */
+  beanFlavor: BeanFlavor;
 };
 
-/**
- * The four Sam's Coffee products. `handle` must match the product handle
- * created in the Shopify admin.
- */
-export const PRODUCTS: Record<string, CoffeeProduct> = {
-  huila: {
-    handle: "huila-origin-coffee",
-    title: "Huila Origin Coffee",
-    price: "19.00",
-    currencyCode: "AUD",
-    fallbackUrl: "https://samscoffee.com.au/#products",
-  },
-  geisha: {
-    handle: "geisha-coffee",
-    title: "Geisha Coffee",
-    price: "15.00",
-    currencyCode: "AUD",
-    fallbackUrl: "https://samscoffee.com.au/#products",
-  },
-  caturra: {
-    handle: "caturra-premium",
-    title: "Caturra Premium",
-    price: "18.00",
-    currencyCode: "AUD",
-    fallbackUrl: "https://samscoffee.com.au/#products",
-  },
-  reserve: {
-    handle: "special-reserve",
-    title: "Special Reserve",
-    price: "15.00",
-    currencyCode: "AUD",
-    fallbackUrl: "https://samscoffee.com.au/#products",
-  },
-};
+/** Static products used only when Shopify is unreachable/unconfigured. */
+const FALLBACK_PRODUCTS: LiveProduct[] = [
+  { id: "huila", title: "Huila Origin Coffee", price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
+];
+
+function formatMoney(amount: string, currencyCode: string): string {
+  const value = Number(amount);
+  const symbol = currencyCode === "AUD" || currencyCode === "USD" ? "$" : "";
+  const formatted = Number.isFinite(value) ? value.toFixed(2) : amount;
+  return symbol ? `${symbol}${formatted}` : `${formatted} ${currencyCode}`;
+}
 
 async function shopifyFetch<T>(
   query: string,
@@ -91,135 +85,104 @@ async function shopifyFetch<T>(
   return json.data;
 }
 
-const FIRST_VARIANT_QUERY = /* GraphQL */ `
-  query FirstVariant($handle: String!) {
-    product(handle: $handle) {
-      variants(first: 1) {
-        nodes {
-          id
-        }
+const PRODUCTS_QUERY = /* GraphQL */ `
+  query CarouselProducts {
+    products(first: 12, sortKey: TITLE) {
+      nodes {
+        handle
+        title
+        availableForSale
+        featuredImage { url altText }
+        priceRange { minVariantPrice { amount currencyCode } }
+        variants(first: 1) { nodes { id } }
       }
     }
   }
 `;
+
+type ProductsResponse = {
+  products: {
+    nodes: {
+      handle: string;
+      title: string;
+      availableForSale: boolean;
+      featuredImage: { url: string; altText: string | null } | null;
+      priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+      variants: { nodes: { id: string }[] };
+    }[];
+  };
+};
+
+/**
+ * Fetches all store products (up to 12) with image, price, availability, and
+ * first-variant id. Falls back to static data when Shopify is unconfigured,
+ * returns no products, or errors — so the carousel never breaks.
+ */
+export async function getProducts(): Promise<LiveProduct[]> {
+  if (!isShopifyConfigured) return FALLBACK_PRODUCTS;
+
+  try {
+    const data = await shopifyFetch<ProductsResponse>(PRODUCTS_QUERY);
+    const nodes = data.products?.nodes ?? [];
+    if (nodes.length === 0) return FALLBACK_PRODUCTS;
+
+    return nodes.map((node, i) => ({
+      id: node.handle,
+      title: node.title,
+      price: formatMoney(
+        node.priceRange.minVariantPrice.amount,
+        node.priceRange.minVariantPrice.currencyCode,
+      ),
+      imageUrl: node.featuredImage?.url ?? null,
+      imageAlt: node.featuredImage?.altText || node.title,
+      available: node.availableForSale,
+      variantId: node.variants.nodes[0]?.id ?? null,
+      beanFlavor: BEAN_FLAVORS[i % BEAN_FLAVORS.length],
+    }));
+  } catch (error) {
+    console.error("getProducts failed, using fallback:", error);
+    return FALLBACK_PRODUCTS;
+  }
+}
+
+/**
+ * Diagnostics for /api/products?debug=1 — never exposes the token, only
+ * whether things are wired up. Safe to remove once launched.
+ */
+export async function getDiagnostics() {
+  const out = {
+    configured: isShopifyConfigured,
+    hasDomain: Boolean(domain),
+    hasToken: Boolean(storefrontToken),
+    productCount: 0,
+    error: null as string | null,
+  };
+  if (!isShopifyConfigured) return out;
+  try {
+    const data = await shopifyFetch<ProductsResponse>(PRODUCTS_QUERY);
+    out.productCount = data.products?.nodes?.length ?? 0;
+  } catch (error) {
+    out.error = error instanceof Error ? error.message : String(error);
+  }
+  return out;
+}
 
 const CART_CREATE_MUTATION = /* GraphQL */ `
   mutation CartCreate($lines: [CartLineInput!]!) {
     cartCreate(input: { lines: $lines }) {
-      cart {
-        checkoutUrl
-      }
-      userErrors {
-        message
-      }
+      cart { checkoutUrl }
+      userErrors { message }
     }
   }
 `;
 
-/** A product as shown in the carousel: live image + price from Shopify. */
-export type LiveProduct = {
-  /** Flavor key (huila / geisha / caturra / reserve). */
-  flavor: string;
-  title: string;
-  /** Formatted price, e.g. "$19.00". */
-  price: string;
-  /** Featured image URL from Shopify, or null if none uploaded yet. */
-  imageUrl: string | null;
-  imageAlt: string;
-  available: boolean;
-};
-
-function formatMoney(amount: string, currencyCode: string): string {
-  const value = Number(amount);
-  const symbol = currencyCode === "AUD" || currencyCode === "USD" ? "$" : "";
-  const formatted = Number.isFinite(value) ? value.toFixed(2) : amount;
-  return symbol ? `${symbol}${formatted}` : `${formatted} ${currencyCode}`;
-}
-
-type ShopifyProductNode = {
-  title: string;
-  availableForSale: boolean;
-  featuredImage: { url: string; altText: string | null } | null;
-  priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
-} | null;
-
 /**
- * Fetches title, featured image, price, and availability for all four
- * products in a single Storefront request (one aliased field per handle).
- * Returns the local `PRODUCTS` data as a fallback when Shopify is not
- * configured or a product/image is missing, so the carousel never breaks.
- */
-export async function getProducts(): Promise<LiveProduct[]> {
-  const entries = Object.entries(PRODUCTS);
-
-  const fallback: LiveProduct[] = entries.map(([flavor, p]) => ({
-    flavor,
-    title: p.title,
-    price: formatMoney(p.price, p.currencyCode),
-    imageUrl: null,
-    imageAlt: p.title,
-    available: true,
-  }));
-
-  if (!isShopifyConfigured) {
-    return fallback;
-  }
-
-  const query = /* GraphQL */ `
-    query CarouselProducts {
-      ${entries
-        .map(
-          ([flavor, p]) => `
-        ${flavor}: product(handle: "${p.handle}") {
-          title
-          availableForSale
-          featuredImage { url altText }
-          priceRange { minVariantPrice { amount currencyCode } }
-        }`,
-        )
-        .join("\n")}
-    }
-  `;
-
-  try {
-    const data = await shopifyFetch<Record<string, ShopifyProductNode>>(query);
-    return entries.map(([flavor, p], i) => {
-      const node = data[flavor];
-      if (!node) return fallback[i];
-      return {
-        flavor,
-        title: node.title || p.title,
-        price: formatMoney(
-          node.priceRange.minVariantPrice.amount,
-          node.priceRange.minVariantPrice.currencyCode,
-        ),
-        imageUrl: node.featuredImage?.url ?? null,
-        imageAlt: node.featuredImage?.altText || node.title || p.title,
-        available: node.availableForSale,
-      };
-    });
-  } catch (error) {
-    console.error("getProducts failed, using fallback:", error);
-    return fallback;
-  }
-}
-
-/**
- * Creates a Shopify cart with one product and returns its checkout URL.
+ * Creates a Shopify cart with one variant and returns its checkout URL.
  */
 export async function createCheckoutUrl(
-  handle: string,
+  variantId: string,
   quantity = 1,
 ): Promise<string> {
-  const productData = await shopifyFetch<{
-    product: { variants: { nodes: { id: string }[] } } | null;
-  }>(FIRST_VARIANT_QUERY, { handle });
-
-  const variantId = productData.product?.variants.nodes[0]?.id;
-  if (!variantId) {
-    throw new Error(`No variant found for product "${handle}"`);
-  }
-
   const cartData = await shopifyFetch<{
     cartCreate: {
       cart: { checkoutUrl: string } | null;
@@ -238,3 +201,5 @@ export async function createCheckoutUrl(
   }
   return checkoutUrl;
 }
+
+export { FALLBACK_STORE_URL };

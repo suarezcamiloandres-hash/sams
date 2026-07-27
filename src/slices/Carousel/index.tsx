@@ -18,16 +18,28 @@ import { ArrowIcon } from "./ArrowIcon";
 import { WavyCircles } from "./WavyCircles";
 
 const SPINS_ON_CHANGE = 8;
-const FLAVORS: {
-  flavor: SodaCanProps["flavor"];
-  color: string;
-  name: string;
+
+/** Background color cycled per product (independent of the product itself). */
+const PALETTE = ["#6B4423", "#8A4455", "#4E5A33", "#5C2E24", "#3A2A17"];
+
+/** One product in the carousel — comes from /api/products (Shopify). */
+type ProductCard = {
+  id: string;
+  title: string;
   price: string;
-}[] = [
-  { flavor: "huila", color: "#6B4423", name: "Huila Origin", price: "$19.00" },
-  { flavor: "geisha", color: "#8A4455", name: "Geisha", price: "$15.00" },
-  { flavor: "caturra", color: "#4E5A33", name: "Caturra Premium", price: "$18.00" },
-  { flavor: "reserve", color: "#5C2E24", name: "Special Reserve", price: "$15.00" },
+  imageUrl: string | null;
+  imageAlt: string;
+  available: boolean;
+  variantId: string | null;
+  beanFlavor: SodaCanProps["flavor"];
+};
+
+/** Shown until /api/products responds (also the shape when Shopify is off). */
+const FALLBACK: ProductCard[] = [
+  { id: "huila", title: "Huila Origin Coffee", price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
 ];
 
 /**
@@ -38,29 +50,21 @@ export type CarouselProps = SliceComponentProps<Content.CarouselSlice>;
 /**
  * Component for "Carousel" Slices.
  */
-/** Live product data pulled from Shopify (or local fallback). */
-type ProductCard = {
-  flavor: string;
-  title: string;
-  price: string;
-  imageUrl: string | null;
-  imageAlt: string;
-  available: boolean;
-};
-
 const Carousel = ({ slice }: CarouselProps): JSX.Element => {
-  const [currentFlavorIndex, setCurrentFlavorIndex] = useState(0);
-  const [products, setProducts] = useState<ProductCard[] | null>(null);
+  const [index, setIndex] = useState(0);
+  const [products, setProducts] = useState<ProductCard[]>(FALLBACK);
   const sodaCanRef = useRef<Group>(null);
 
-  // Pull live image + price from Shopify. Falls back to the static FLAVORS
-  // data (and the 3D bean) until product photos are uploaded to Shopify.
+  // Load whatever products exist in Shopify (image, price, variant).
   useEffect(() => {
     let active = true;
     fetch("/api/products")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (active && Array.isArray(data)) setProducts(data as ProductCard[]);
+        if (active && Array.isArray(data) && data.length > 0) {
+          setProducts(data as ProductCard[]);
+          setIndex(0);
+        }
       })
       .catch(() => {});
     return () => {
@@ -68,13 +72,17 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
     };
   }, []);
 
-  const current = products?.[currentFlavorIndex];
-  const displayName = current?.title ?? FLAVORS[currentFlavorIndex].name;
-  const displayPrice = current?.price ?? FLAVORS[currentFlavorIndex].price;
-  const displayImage = current?.imageUrl ?? null;
+  const count = products.length;
+  const current = products[index];
+  const displayName = current.title;
+  const displayPrice = current.price;
+  const displayImage = current.imageUrl;
+  const checkoutHref = current.variantId
+    ? `/api/checkout?variant=${encodeURIComponent(current.variantId)}`
+    : "/api/checkout";
 
-  function changeFlavor(index: number) {
-    const nextIndex = (index + FLAVORS.length) % FLAVORS.length;
+  function changeFlavor(next: number) {
+    const nextIndex = (next + count) % count;
 
     const tl = gsap.timeline();
 
@@ -84,7 +92,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
         sodaCanRef.current.rotation,
         {
           y:
-            index > currentFlavorIndex
+            next > index
               ? `-=${Math.PI * 2 * SPINS_ON_CHANGE}`
               : `+=${Math.PI * 2 * SPINS_ON_CHANGE}`,
           ease: "power2.inOut",
@@ -97,15 +105,15 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
     tl.to(
         ".background, .wavy-circles-outer, .wavy-circles-inner",
         {
-          backgroundColor: FLAVORS[nextIndex].color,
-          fill: FLAVORS[nextIndex].color,
+          backgroundColor: PALETTE[nextIndex % PALETTE.length],
+          fill: PALETTE[nextIndex % PALETTE.length],
           ease: "power2.inOut",
           duration: 1,
         },
         0,
       )
       .to(".text-wrapper", { duration: 0.2, y: -10, opacity: 0 }, 0)
-      .to({}, { onStart: () => setCurrentFlavorIndex(nextIndex) }, 0.5)
+      .to({}, { onStart: () => setIndex(nextIndex) }, 0.5)
       .to(".text-wrapper", { duration: 0.2, y: 0, opacity: 1 }, 0.7);
   }
 
@@ -126,9 +134,9 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
       <div className="grid grid-cols-[auto,auto,auto] items-center">
         {/* Left */}
         <ArrowButton
-          onClick={() => changeFlavor(currentFlavorIndex + 1)}
+          onClick={() => changeFlavor(index + 1)}
           direction="left"
-          label="Previous Flavor"
+          label="Previous product"
         />
         {/* Product photo (from Shopify) with the 3D bean as fallback */}
         <div className="relative aspect-square h-[70vmin] min-h-40">
@@ -147,7 +155,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
                   ref={sodaCanRef}
                   floatIntensity={0.3}
                   rotationIntensity={1}
-                  flavor={FLAVORS[currentFlavorIndex].flavor}
+                  flavor={current.beanFlavor}
                 />
               </Center>
 
@@ -162,9 +170,9 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
         </div>
         {/* Right */}
         <ArrowButton
-          onClick={() => changeFlavor(currentFlavorIndex - 1)}
+          onClick={() => changeFlavor(index - 1)}
           direction="right"
-          label="Next Flavor"
+          label="Next product"
         />
       </div>
 
@@ -179,7 +187,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
           <PrismicRichText field={slice.primary.price_copy} />
         </div>
         <a
-          href={`/api/checkout?flavor=${FLAVORS[currentFlavorIndex].flavor}`}
+          href={checkoutHref}
           className="mt-6 inline-block rounded-sm bg-gold px-8 py-4 text-xl font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep"
         >
           Buy now — {displayPrice}
