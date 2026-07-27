@@ -181,7 +181,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
             <span className="font-bold text-gold">{displayPrice}</span>
           </p>
         </div>
-        <p className="mx-auto mt-2 max-w-xl text-pretty text-lg font-normal opacity-90">
+        <p className="mx-auto mt-2 line-clamp-3 max-w-xl text-pretty text-base font-normal opacity-90">
           {current.description}
         </p>
         <a
