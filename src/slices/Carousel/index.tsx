@@ -119,7 +119,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
     <section
       data-slice-type={slice.slice_type}
       data-slice-variation={slice.variation}
-      className="carousel relative grid h-screen grid-rows-[auto,4fr,auto] justify-center overflow-hidden bg-white py-12 text-white"
+      className="carousel relative grid h-screen grid-rows-[auto,1fr,auto] justify-center gap-y-4 overflow-hidden bg-white py-10 text-white"
     >
       <div className="background pointer-events-none absolute inset-0 bg-[#6B4423] opacity-50" />
 
@@ -137,7 +137,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
           label="Previous product"
         />
         {/* Product photo (from Shopify) with the 3D bean as fallback */}
-        <div className="relative aspect-square h-[70vmin] min-h-40">
+        <div className="relative aspect-square h-[70vmin] max-h-[42vh] min-h-40 md:max-h-[46vh]">
           {displayImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -174,19 +174,21 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
         />
       </div>
 
-      <div className="text-area relative mx-auto text-center">
-        <div className="text-wrapper text-4xl font-medium">
-          <p>
-            {displayName}{" "}
-            <span className="font-bold text-gold">{displayPrice}</span>
+      <div className="text-area relative mx-auto px-6 pb-2 text-center">
+        <div className="text-wrapper">
+          <p className="mx-auto max-w-2xl text-balance text-xl font-semibold leading-tight md:text-2xl">
+            {displayName}
+          </p>
+          <p className="mt-1 text-2xl font-bold text-gold md:text-3xl">
+            {displayPrice}
           </p>
         </div>
-        <p className="mx-auto mt-2 line-clamp-3 max-w-xl text-pretty text-base font-normal opacity-90">
+        <p className="mx-auto mt-2 line-clamp-2 max-w-xl text-pretty text-sm font-normal opacity-90 md:text-base">
           {current.description}
         </p>
         <a
           href={checkoutHref}
-          className="mt-6 inline-block rounded-sm bg-gold px-8 py-4 text-xl font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep"
+          className="mt-4 inline-block rounded-sm bg-gold px-8 py-3 text-lg font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-xl"
         >
           Buy now — {displayPrice}
         </a>
