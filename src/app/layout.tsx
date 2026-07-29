@@ -9,6 +9,7 @@ import ViewCanvas from "@/components/ViewCanvas";
 import Footer from "@/components/Footer";
 import VideoButton from "@/components/VideoButton";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import AnnouncementBar from "@/components/AnnouncementBar";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} ${alexBrush.variable}`}>
       <body className="overflow-x-hidden bg-crema">
+        <AnnouncementBar />
         <Header />
         <main>
           {children}
