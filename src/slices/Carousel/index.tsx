@@ -10,6 +10,7 @@ import gsap from "gsap";
 
 import FloatingCan from "@/components/FloatingCan";
 import { SodaCanProps } from "@/components/SodaCan";
+import { useCart } from "@/lib/cart-context";
 import { ArrowIcon } from "./ArrowIcon";
 import { WavyCircles } from "./WavyCircles";
 
@@ -24,6 +25,8 @@ type ProductCard = {
   title: string;
   description: string;
   price: string;
+  amount: number;
+  currencyCode: string;
   imageUrl: string | null;
   imageAlt: string;
   available: boolean;
@@ -34,10 +37,10 @@ type ProductCard = {
 /** Shown until /api/products responds (also the shape when Shopify is off). */
 const FALLBACK_DESC = "Specialty Colombian coffee, roasted to order in Brisbane.";
 const FALLBACK: ProductCard[] = [
-  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
-  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
-  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
-  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
+  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", amount: 19, currencyCode: "AUD", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", amount: 15, currencyCode: "AUD", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", amount: 18, currencyCode: "AUD", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", amount: 15, currencyCode: "AUD", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
 ];
 
 /**
@@ -52,6 +55,7 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
   const [index, setIndex] = useState(0);
   const [products, setProducts] = useState<ProductCard[]>(FALLBACK);
   const sodaCanRef = useRef<Group>(null);
+  const { addItem } = useCart();
 
   // Load whatever products exist in Shopify (image, price, variant).
   useEffect(() => {
@@ -187,12 +191,32 @@ const Carousel = ({ slice }: CarouselProps): JSX.Element => {
           {current.description}
         </p>
         <div className="mt-4 flex flex-col items-center gap-2">
-          <a
-            href={checkoutHref}
-            className="inline-block rounded-sm bg-gold px-8 py-3 text-lg font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-xl"
-          >
-            Buy now — {displayPrice}
-          </a>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                current.variantId &&
+                addItem({
+                  variantId: current.variantId,
+                  handle: current.id,
+                  title: current.title,
+                  imageUrl: current.imageUrl,
+                  amount: current.amount,
+                  currencyCode: current.currencyCode,
+                })
+              }
+              disabled={!current.variantId}
+              className="rounded-sm border-2 border-white px-6 py-3 text-base font-bold uppercase tracking-wide text-white transition-colors duration-150 hover:bg-white hover:text-espresso disabled:opacity-40 md:text-lg"
+            >
+              Add to cart
+            </button>
+            <a
+              href={checkoutHref}
+              className="rounded-sm bg-gold px-6 py-3 text-base font-bold uppercase tracking-wide text-espresso transition-colors duration-150 hover:bg-gold-deep md:text-lg"
+            >
+              Buy now — {displayPrice}
+            </a>
+          </div>
           <a
             href={`/products/${current.id}`}
             className="text-sm font-medium uppercase tracking-wide text-white/80 underline underline-offset-4 transition-colors hover:text-white"

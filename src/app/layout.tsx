@@ -10,6 +10,8 @@ import Footer from "@/components/Footer";
 import VideoButton from "@/components/VideoButton";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import AnnouncementBar from "@/components/AnnouncementBar";
+import CartButton from "@/components/CartButton";
+import { CartProvider } from "@/lib/cart-context";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -32,15 +34,18 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} ${alexBrush.variable}`}>
       <body className="overflow-x-hidden bg-crema">
-        <AnnouncementBar />
-        <Header />
-        <main>
-          {children}
-          <ViewCanvas />
-        </main>
-        <Footer />
-        <VideoButton />
-        <WhatsAppButton />
+        <CartProvider>
+          <AnnouncementBar />
+          <Header />
+          <main>
+            {children}
+            <ViewCanvas />
+          </main>
+          <Footer />
+          <VideoButton />
+          <WhatsAppButton />
+          <CartButton />
+        </CartProvider>
       </body>
       <PrismicPreview repositoryName={repositoryName} />
     </html>

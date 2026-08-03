@@ -87,6 +87,11 @@ export default async function ProductPage({ params }: { params: Params }) {
 
             <BuyControls
               variantId={product.variantId}
+              handle={product.handle}
+              title={product.title}
+              imageUrl={product.imageUrl}
+              amount={product.amount}
+              currencyCode={product.currencyCode}
               price={product.price}
               available={product.available}
             />

@@ -21,8 +21,8 @@ export const fallbackSlices = [
     version: "initial",
     items: [],
     primary: {
-      heading: richHeading("Single Origin"),
-      subheading: richParagraph("Coffee for the world."),
+      heading: richHeading("Authentic Colombian Coffee"),
+      subheading: richParagraph("Crafted for Every Cup"),
       body: richParagraph(
         "Specialty Colombian coffee grown between 1,600 and 2,000 metres in Huila. SCA score 84+, every harvest.",
       ),

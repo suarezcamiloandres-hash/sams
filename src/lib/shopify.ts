@@ -7,6 +7,8 @@
  * static fallback keeps the site rendering with the 3D bean.
  */
 
+import { formatMoney } from "./money";
+
 const SHOPIFY_API_VERSION = "2025-01";
 
 const domain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
@@ -30,6 +32,9 @@ export type LiveProduct = {
   description: string;
   /** Formatted price, e.g. "$19.00". */
   price: string;
+  /** Numeric unit price (for cart subtotal math). */
+  amount: number;
+  currencyCode: string;
   /** Featured image URL from Shopify, or null if none uploaded yet. */
   imageUrl: string | null;
   imageAlt: string;
@@ -43,18 +48,12 @@ export type LiveProduct = {
 /** Static products used only when Shopify is unreachable/unconfigured. */
 const FALLBACK_DESC = "Specialty Colombian coffee, roasted to order in Brisbane.";
 const FALLBACK_PRODUCTS: LiveProduct[] = [
-  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
-  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
-  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
-  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
+  { id: "huila", title: "Huila Origin Coffee", description: FALLBACK_DESC, price: "$19.00", amount: 19, currencyCode: "AUD", imageUrl: null, imageAlt: "Huila Origin Coffee", available: true, variantId: null, beanFlavor: "huila" },
+  { id: "geisha", title: "Geisha Coffee", description: FALLBACK_DESC, price: "$15.00", amount: 15, currencyCode: "AUD", imageUrl: null, imageAlt: "Geisha Coffee", available: true, variantId: null, beanFlavor: "geisha" },
+  { id: "caturra", title: "Caturra Premium", description: FALLBACK_DESC, price: "$18.00", amount: 18, currencyCode: "AUD", imageUrl: null, imageAlt: "Caturra Premium", available: true, variantId: null, beanFlavor: "caturra" },
+  { id: "reserve", title: "Special Reserve", description: FALLBACK_DESC, price: "$15.00", amount: 15, currencyCode: "AUD", imageUrl: null, imageAlt: "Special Reserve", available: true, variantId: null, beanFlavor: "reserve" },
 ];
 
-function formatMoney(amount: string, currencyCode: string): string {
-  const value = Number(amount);
-  const symbol = currencyCode === "AUD" || currencyCode === "USD" ? "$" : "";
-  const formatted = Number.isFinite(value) ? value.toFixed(2) : amount;
-  return symbol ? `${symbol}${formatted}` : `${formatted} ${currencyCode}`;
-}
 
 async function shopifyFetch<T>(
   query: string,
@@ -139,6 +138,8 @@ export async function getProducts(): Promise<LiveProduct[]> {
         node.priceRange.minVariantPrice.amount,
         node.priceRange.minVariantPrice.currencyCode,
       ),
+      amount: Number(node.priceRange.minVariantPrice.amount),
+      currencyCode: node.priceRange.minVariantPrice.currencyCode,
       imageUrl: node.featuredImage?.url ?? null,
       imageAlt: node.featuredImage?.altText || node.title,
       available: node.availableForSale,
@@ -157,6 +158,8 @@ export type ProductDetail = {
   title: string;
   descriptionHtml: string;
   price: string;
+  amount: number;
+  currencyCode: string;
   imageUrl: string | null;
   imageAlt: string;
   images: { url: string; alt: string }[];
@@ -193,6 +196,8 @@ export async function getProduct(handle: string): Promise<ProductDetail | null> 
       title: fb.title,
       descriptionHtml: `<p>${fb.description}</p>`,
       price: fb.price,
+      amount: fb.amount,
+      currencyCode: fb.currencyCode,
       imageUrl: fb.imageUrl,
       imageAlt: fb.imageAlt,
       images: [],
@@ -225,6 +230,8 @@ export async function getProduct(handle: string): Promise<ProductDetail | null> 
         p.priceRange.minVariantPrice.amount,
         p.priceRange.minVariantPrice.currencyCode,
       ),
+      amount: Number(p.priceRange.minVariantPrice.amount),
+      currencyCode: p.priceRange.minVariantPrice.currencyCode,
       imageUrl: p.featuredImage?.url ?? null,
       imageAlt: p.featuredImage?.altText || p.title,
       images: p.images.nodes.map((n) => ({ url: n.url, alt: n.altText || p.title })),
@@ -282,6 +289,35 @@ export async function createCheckoutUrl(
     };
   }>(CART_CREATE_MUTATION, {
     lines: [{ merchandiseId: variantId, quantity }],
+  });
+
+  const checkoutUrl = cartData.cartCreate.cart?.checkoutUrl;
+  if (!checkoutUrl) {
+    throw new Error(
+      cartData.cartCreate.userErrors.map((e) => e.message).join("; ") ||
+        "Cart creation failed",
+    );
+  }
+  return checkoutUrl;
+}
+
+/**
+ * Creates a Shopify cart with multiple line items (the whole cart) and
+ * returns its checkout URL.
+ */
+export async function createCheckout(
+  lines: { variantId: string; quantity: number }[],
+): Promise<string> {
+  const cartData = await shopifyFetch<{
+    cartCreate: {
+      cart: { checkoutUrl: string } | null;
+      userErrors: { message: string }[];
+    };
+  }>(CART_CREATE_MUTATION, {
+    lines: lines.map((l) => ({
+      merchandiseId: l.variantId,
+      quantity: Math.min(99, Math.max(1, l.quantity)),
+    })),
   });
 
   const checkoutUrl = cartData.cartCreate.cart?.checkoutUrl;
