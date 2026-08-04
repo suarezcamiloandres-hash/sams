@@ -27,7 +27,7 @@ export const fallbackSlices = [
         "Specialty Colombian coffee grown between 1,600 and 2,000 metres in Huila. SCA score 84+, every harvest.",
       ),
       button_text: "Shop coffee",
-      button_link: { link_type: "Web", url: "#choose-your-coffee" },
+      button_link: { link_type: "Web", url: "/shop" },
       cans_image: {},
       second_heading: richHeading("Crafted at origin", 2),
       second_body: richParagraph(
