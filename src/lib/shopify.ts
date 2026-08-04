@@ -145,7 +145,9 @@ export async function getProducts(): Promise<LiveProduct[]> {
       currencyCode: node.priceRange.minVariantPrice.currencyCode,
       imageUrl: node.featuredImage?.url ?? null,
       imageAlt: node.featuredImage?.altText || node.title,
-      available: node.availableForSale,
+      // The store doesn't track inventory, so everything is purchasable.
+      // Shopify checkout stays the final authority on availability.
+      available: true,
       variantId: node.variants.nodes[0]?.id ?? null,
       beanFlavor: BEAN_FLAVORS[i % BEAN_FLAVORS.length],
     }));
@@ -238,7 +240,8 @@ export async function getProduct(handle: string): Promise<ProductDetail | null> 
       imageUrl: p.featuredImage?.url ?? null,
       imageAlt: p.featuredImage?.altText || p.title,
       images: p.images.nodes.map((n) => ({ url: n.url, alt: n.altText || p.title })),
-      available: p.availableForSale,
+      // Store doesn't track inventory — treat as always purchasable.
+      available: true,
       variantId: p.variants.nodes[0]?.id ?? null,
     };
   } catch (error) {
