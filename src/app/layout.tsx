@@ -5,7 +5,6 @@ import { repositoryName } from "@/prismicio";
 
 import "./app.css";
 import Header from "@/components/Header";
-import ViewCanvas from "@/components/ViewCanvas";
 import Footer from "@/components/Footer";
 import VideoButton from "@/components/VideoButton";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -38,10 +37,7 @@ export default function RootLayout({
         <CartProvider>
           <AnnouncementBar />
           <Header />
-          <main>
-            {children}
-            <ViewCanvas />
-          </main>
+          <main>{children}</main>
           <Footer />
           <VideoButton />
           <WhatsAppButton />

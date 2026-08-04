@@ -7,6 +7,7 @@ import { createClient } from "@/prismicio";
 import { components } from "@/slices";
 import { fallbackSlices } from "@/lib/fallbackSlices";
 import Certifications from "@/components/Certifications";
+import ViewCanvas from "@/components/ViewCanvas";
 
 // This component renders your homepage.
 //
@@ -55,6 +56,7 @@ export default async function Index() {
     <>
       <SliceZone slices={slices} components={components} />
       <Certifications />
+      <ViewCanvas />
     </>
   );
 }
