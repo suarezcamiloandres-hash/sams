@@ -21,7 +21,7 @@ export const isShopifyConfigured = Boolean(domain && storefrontToken);
 export const isAdminConfigured = Boolean(domain && adminToken);
 
 /** Where "Buy now" goes when Shopify isn't configured yet. */
-const FALLBACK_STORE_URL = "https://samscoffee.com.au/#products";
+const FALLBACK_STORE_URL = "https://www.samscoffee.com.au/shop";
 
 const BEAN_FLAVORS = ["huila", "geisha", "caturra", "reserve"] as const;
 export type BeanFlavor = (typeof BEAN_FLAVORS)[number];
