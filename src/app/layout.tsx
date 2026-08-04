@@ -32,8 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${alexBrush.variable}`}>
-      <body className="overflow-x-hidden bg-crema">
+    <html
+      lang="en"
+      className={`${montserrat.variable} ${alexBrush.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="overflow-x-hidden bg-crema" suppressHydrationWarning>
         <CartProvider>
           <AnnouncementBar />
           <Header />
