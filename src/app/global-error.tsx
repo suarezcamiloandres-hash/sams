@@ -87,20 +87,6 @@ export default function GlobalError({
             Go home
           </a>
         </div>
-        {/* Temporary diagnostic — shows the real error so we can pinpoint it. */}
-        <pre
-          style={{
-            marginTop: "8px",
-            maxWidth: "40rem",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontSize: "12px",
-            opacity: 0.6,
-          }}
-        >
-          {error?.name}: {error?.message}
-          {error?.digest ? `\ndigest: ${error.digest}` : ""}
-        </pre>
       </body>
     </html>
   );

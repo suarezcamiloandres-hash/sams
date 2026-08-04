@@ -38,6 +38,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="overflow-x-hidden bg-crema" suppressHydrationWarning>
+        {/*
+          Guards against the "removeChild/insertBefore NotFoundError" crash
+          caused by browser translation extensions (Google Translate, DeepL)
+          mutating the DOM out from under React. Runs before hydration and
+          makes these DOM ops no-op gracefully instead of throwing.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(typeof Node!=="function"||!Node.prototype)return;var r=Node.prototype.removeChild;Node.prototype.removeChild=function(c){if(c.parentNode!==this){return c;}return r.apply(this,arguments);};var i=Node.prototype.insertBefore;Node.prototype.insertBefore=function(n,e){if(e&&e.parentNode!==this){return n;}return i.apply(this,arguments);};})();`,
+          }}
+        />
         <CartProvider>
           <AnnouncementBar />
           <Header />
