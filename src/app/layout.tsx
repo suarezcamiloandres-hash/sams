@@ -11,6 +11,7 @@ import VideoButton from "@/components/VideoButton";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import CartButton from "@/components/CartButton";
+import WelcomePopup from "@/components/WelcomePopup";
 import { CartProvider } from "@/lib/cart-context";
 
 const montserrat = Montserrat({
@@ -45,6 +46,7 @@ export default function RootLayout({
           <VideoButton />
           <WhatsAppButton />
           <CartButton />
+          <WelcomePopup />
         </CartProvider>
       </body>
       <PrismicPreview repositoryName={repositoryName} />

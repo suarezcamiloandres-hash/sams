@@ -14,8 +14,11 @@ const SHOPIFY_API_VERSION = "2025-01";
 const domain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
 const storefrontToken =
   process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN;
+// Server-only secret (NOT NEXT_PUBLIC) — used to save newsletter subscribers.
+const adminToken = process.env.SHOPIFY_ADMIN_API_TOKEN;
 
 export const isShopifyConfigured = Boolean(domain && storefrontToken);
+export const isAdminConfigured = Boolean(domain && adminToken);
 
 /** Where "Buy now" goes when Shopify isn't configured yet. */
 const FALLBACK_STORE_URL = "https://samscoffee.com.au/#products";
@@ -328,6 +331,71 @@ export async function createCheckout(
     );
   }
   return checkoutUrl;
+}
+
+/**
+ * Subscribes an email to marketing in Shopify via the Admin API. Degrades
+ * gracefully: when the admin token isn't set the popup still works, it just
+ * doesn't persist the email yet (saved: false). Treats "already subscribed"
+ * as success.
+ */
+export async function subscribeEmail(
+  email: string,
+): Promise<{ ok: boolean; saved: boolean }> {
+  if (!isAdminConfigured) return { ok: true, saved: false };
+
+  const query = /* GraphQL */ `
+    mutation customerCreate($input: CustomerInput!) {
+      customerCreate(input: $input) {
+        customer { id }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch(
+      `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": adminToken as string,
+        },
+        body: JSON.stringify({
+          query,
+          variables: {
+            input: {
+              email,
+              emailMarketingConsent: {
+                marketingState: "SUBSCRIBED",
+                marketingOptInLevel: "SINGLE_OPT_IN",
+              },
+            },
+          },
+        }),
+        cache: "no-store",
+      },
+    );
+
+    if (!res.ok) return { ok: true, saved: false };
+    const json = (await res.json()) as {
+      data?: {
+        customerCreate?: {
+          customer?: { id: string } | null;
+          userErrors?: { message: string }[];
+        };
+      };
+    };
+    const errors = json.data?.customerCreate?.userErrors ?? [];
+    const alreadyExists = errors.some((e) => /already|taken/i.test(e.message));
+    const saved =
+      Boolean(json.data?.customerCreate?.customer?.id) || alreadyExists;
+    return { ok: true, saved };
+  } catch (error) {
+    console.error("subscribeEmail failed:", error);
+    return { ok: true, saved: false };
+  }
 }
 
 export { FALLBACK_STORE_URL };
