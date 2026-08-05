@@ -91,7 +91,7 @@ async function shopifyFetch<T>(
 }
 
 const PRODUCTS_QUERY = /* GraphQL */ `
-  query CarouselProducts {
+  query CarouselProducts @inContext(country: AU) {
     products(first: 12, sortKey: TITLE) {
       nodes {
         handle
@@ -173,7 +173,7 @@ export type ProductDetail = {
 };
 
 const PRODUCT_QUERY = /* GraphQL */ `
-  query Product($handle: String!) {
+  query Product($handle: String!) @inContext(country: AU) {
     product(handle: $handle) {
       handle
       title
@@ -274,7 +274,7 @@ export async function getDiagnostics() {
 
 const CART_CREATE_MUTATION = /* GraphQL */ `
   mutation CartCreate($lines: [CartLineInput!]!) {
-    cartCreate(input: { lines: $lines }) {
+    cartCreate(input: { lines: $lines, buyerIdentity: { countryCode: AU } }) {
       cart { checkoutUrl }
       userErrors { message }
     }
